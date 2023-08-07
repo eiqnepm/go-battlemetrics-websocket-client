@@ -56,10 +56,9 @@ func HandleFunc(handler func(msg IRTMessage)) {
 }
 
 var (
-	lastPing      time.Time
-	lastMessage   string
-	retryDelay    time.Duration
-	lastConnected time.Time
+	lastPing    time.Time
+	lastMessage string
+	retryDelay  time.Duration
 )
 
 func Listen(replayMaxTime time.Duration) {
@@ -72,8 +71,6 @@ func Listen(replayMaxTime time.Duration) {
 			}
 			defer conn.Close()
 			retryDelay = 0
-			prevLastConnected := lastConnected
-			lastConnected = time.Now()
 
 			done := make(chan interface{})
 			go func() {
@@ -86,11 +83,10 @@ func Listen(replayMaxTime time.Duration) {
 						return
 					}
 					lastPing = time.Now()
-
+					lastMessage = msg.I
 					if msg.T == "ack" {
 						continue
 					}
-					lastMessage = msg.I
 
 					if handleFunc == nil {
 						continue
@@ -99,7 +95,7 @@ func Listen(replayMaxTime time.Duration) {
 				}
 			}()
 
-			sendQueue := make(chan IRTMessage)
+			sendQueue := make(chan IRTMessage, 1)
 			go func() {
 				for {
 					select {
@@ -128,7 +124,7 @@ func Listen(replayMaxTime time.Duration) {
 				T: "join",
 				P: channels,
 			}
-			if lastMessage != "" && !prevLastConnected.IsZero() && time.Since(prevLastConnected) < replayMaxTime {
+			if lastMessage != "" && !lastPing.IsZero() && time.Since(lastPing) < replayMaxTime {
 				log.Println("Will replay")
 				sendQueue <- IRTMessage{
 					I: uuid.New().String(),
@@ -140,10 +136,10 @@ func Listen(replayMaxTime time.Duration) {
 				}
 			} else {
 				lastMessage := "never"
-				if !prevLastConnected.IsZero() {
-					lastMessage = time.Since(prevLastConnected).String() + " ago"
+				if !lastPing.IsZero() {
+					lastMessage = time.Since(lastPing).String() + " ago"
 				}
-				log.Println("No replay. Last message was too long ago, or no message to replay from. Last connected: " + lastMessage)
+				log.Println("No replay. Last message was too long ago, or no message to replay from. Last message: " + lastMessage)
 			}
 
 			ticker := time.NewTicker(30 * time.Second)
@@ -153,11 +149,14 @@ func Listen(replayMaxTime time.Duration) {
 					select {
 					case <-ticker.C:
 						if time.Now().After(lastPing.Add(1 * time.Minute)) {
-							log.Println("no message received")
-							close(done)
+							log.Println("Last activity more than a minute ago. Closing connection.")
+							conn.Close()
 							return
 						}
 
+						if len(sendQueue) != 0 {
+							continue
+						}
 						sendQueue <- IRTMessage{
 							I: uuid.New().String(),
 							T: "ping",
