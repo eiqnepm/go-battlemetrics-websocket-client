@@ -56,9 +56,10 @@ func HandleFunc(handler func(msg IRTMessage)) {
 }
 
 var (
-	lastPing    time.Time
-	lastMessage string
-	retryDelay  time.Duration
+	retryDelay      time.Duration
+	lastPing        time.Time
+	lastMessageTime time.Time
+	lastMessage     string
 )
 
 func Listen(replayMaxTime time.Duration) {
@@ -82,11 +83,13 @@ func Listen(replayMaxTime time.Duration) {
 						log.Println("read:", err)
 						return
 					}
-					lastPing = time.Now()
-					lastMessage = msg.I
+					messageTime := time.Now()
+					lastPing = messageTime
 					if msg.T == "ack" {
 						continue
 					}
+					lastMessageTime = messageTime
+					lastMessage = msg.I
 
 					if handleFunc == nil {
 						continue
@@ -109,6 +112,7 @@ func Listen(replayMaxTime time.Duration) {
 					}
 				}
 			}()
+
 			for t, filter := range filters {
 				sendQueue <- IRTMessage{
 					I: uuid.New().String(),
@@ -119,12 +123,14 @@ func Listen(replayMaxTime time.Duration) {
 					},
 				}
 			}
+
 			sendQueue <- IRTMessage{
 				I: uuid.New().String(),
 				T: "join",
 				P: channels,
 			}
-			if lastMessage != "" && !lastPing.IsZero() && time.Since(lastPing) < replayMaxTime {
+
+			if !lastMessageTime.IsZero() && time.Since(lastMessageTime) < replayMaxTime {
 				log.Println("Will replay")
 				sendQueue <- IRTMessage{
 					I: uuid.New().String(),
@@ -136,8 +142,8 @@ func Listen(replayMaxTime time.Duration) {
 				}
 			} else {
 				lastMessage := "never"
-				if !lastPing.IsZero() {
-					lastMessage = time.Since(lastPing).String() + " ago"
+				if !lastMessageTime.IsZero() {
+					lastMessage = time.Since(lastMessageTime).String() + " ago"
 				}
 				log.Println("No replay. Last message was too long ago, or no message to replay from. Last message: " + lastMessage)
 			}
