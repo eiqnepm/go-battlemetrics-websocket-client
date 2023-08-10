@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"strings"
-	"time"
 )
 
 func onMessage(msg client.IRTMessage) {
@@ -13,16 +12,14 @@ func onMessage(msg client.IRTMessage) {
 }
 
 func main() {
-	for _, sid := range strings.Split(os.Getenv("SERVERS"), ",") {
-		client.Join("server:events:" + sid)
+	log.SetFlags(log.Flags() | log.LUTC)
+
+	var channels []string
+	for _, channel := range strings.Split(os.Getenv("SERVERS"), ",") {
+		channels = append(channels, "server:events:"+channel)
 	}
-	filter := client.IActivityFilter{
-		TagTypeMode: "and",
-		Types: client.IActivityFilterTypes{
-			Whitelist: []string{"addPlayer", "removePlayer"},
-		},
-	}
-	client.Filter("ACTIVITY", filter)
-	client.HandleFunc(onMessage)
-	client.Listen(5 * time.Minute)
+
+	client.Client{
+		Channels: channels,
+	}.Read(onMessage)
 }
