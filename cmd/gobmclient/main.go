@@ -1,10 +1,11 @@
 package main
 
 import (
-	"gobmclient/internal/client"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/eiqnepm/go-battlemetrics-websocket-client/internal/client"
 )
 
 func onMessage(msg client.IRTMessage) {

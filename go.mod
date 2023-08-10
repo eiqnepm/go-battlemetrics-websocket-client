@@ -1,4 +1,4 @@
-module gobmclient
+module github.com/eiqnepm/go-battlemetrics-websocket-client
 
 go 1.21.0
 
