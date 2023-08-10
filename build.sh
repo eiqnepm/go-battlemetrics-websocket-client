@@ -1,3 +1,3 @@
 #!/bin/bash
 
-sudo docker build -t gobmclient .
+sudo docker build -t go-battlemetrics-websocket-client .

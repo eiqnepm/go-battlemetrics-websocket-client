@@ -9,7 +9,7 @@ COPY internal ./internal
 
 RUN go mod download
 
-RUN go build -ldflags="-s -w" -o /usr/local/bin/app cmd/gobmclient/main.go
+RUN go build -ldflags="-s -w" -o /usr/local/bin/app cmd/go-battlemetrics-websocket-client/main.go
 
 FROM alpine:latest
 

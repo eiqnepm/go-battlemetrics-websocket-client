@@ -1,9 +1,9 @@
 version: "3"
 
 services:
-  gobmclient:
-    container_name: gobmclient
-    image: gobmclient
+  go-battlemetrics-websocket-client:
+    container_name: go-battlemetrics-websocket-client
+    image: go-battlemetrics-websocket-client
     restart: unless-stopped
     environment:
       - "SERVERS=${SERVERS}"
